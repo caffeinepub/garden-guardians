@@ -1,0 +1,214 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/assets/fonts/BricolageGrotesque[opsz,wdth,wght].woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Sora";
+  src: url("/assets/fonts/Sora[wght].woff2") format("woff2");
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* Garden Guardians – Deep Forest Dark Theme */
+    --background: 0.12 0.02 160;
+    --foreground: 0.92 0.04 120;
+
+    --card: 0.16 0.03 160;
+    --card-foreground: 0.92 0.04 120;
+
+    --popover: 0.18 0.03 155;
+    --popover-foreground: 0.92 0.04 120;
+
+    --primary: 0.78 0.18 145;
+    --primary-foreground: 0.10 0.02 160;
+
+    --secondary: 0.22 0.04 160;
+    --secondary-foreground: 0.88 0.06 120;
+
+    --muted: 0.18 0.02 155;
+    --muted-foreground: 0.60 0.05 140;
+
+    --accent: 0.82 0.20 80;
+    --accent-foreground: 0.10 0.02 100;
+
+    --destructive: 0.62 0.22 25;
+    --destructive-foreground: 0.98 0.01 60;
+
+    --border: 0.28 0.05 155;
+    --input: 0.22 0.04 158;
+    --ring: 0.65 0.15 145;
+
+    --chart-1: 0.78 0.18 145;
+    --chart-2: 0.72 0.18 80;
+    --chart-3: 0.65 0.22 25;
+    --chart-4: 0.60 0.20 270;
+    --chart-5: 0.68 0.16 200;
+
+    --sidebar: 0.14 0.025 158;
+    --sidebar-foreground: 0.92 0.04 120;
+    --sidebar-primary: 0.78 0.18 145;
+    --sidebar-primary-foreground: 0.10 0.02 160;
+    --sidebar-accent: 0.20 0.04 155;
+    --sidebar-accent-foreground: 0.88 0.06 120;
+    --sidebar-border: 0.28 0.05 155;
+    --sidebar-ring: 0.65 0.15 145;
+
+    /* Game specific tokens */
+    --game-forest: #1a3a2a;
+    --game-leaf: #2d7a4a;
+    --game-gold: #d4a017;
+    --game-danger: #e03030;
+    --game-sky: #4a9eff;
+    --game-purple: #a855f7;
+    --game-glow: rgba(45, 122, 74, 0.4);
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Sora", sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Bricolage Grotesque", sans-serif;
+  }
+}
+
+/* Game canvas shake animation */
+@keyframes canvasShake {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-4px, -2px); }
+  20% { transform: translate(4px, 2px); }
+  30% { transform: translate(-3px, 3px); }
+  40% { transform: translate(3px, -3px); }
+  50% { transform: translate(-4px, 1px); }
+  60% { transform: translate(4px, -1px); }
+  70% { transform: translate(-2px, 4px); }
+  80% { transform: translate(2px, -4px); }
+  90% { transform: translate(-1px, 2px); }
+}
+
+.canvas-shake {
+  animation: canvasShake 0.5s ease-in-out;
+}
+
+/* Weather overlays */
+@keyframes rainDrop {
+  0% { opacity: 0; transform: translateY(-20px); }
+  50% { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(20px); }
+}
+
+@keyframes lightningFlash {
+  0%, 100% { opacity: 0; }
+  10%, 30% { opacity: 0.8; }
+  20% { opacity: 0; }
+}
+
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-40px); }
+}
+
+.weather-overlay-rain {
+  background: linear-gradient(to bottom, rgba(80, 140, 200, 0.12), rgba(60, 100, 160, 0.05));
+}
+
+.weather-overlay-storm {
+  background: radial-gradient(ellipse at center, rgba(100, 60, 160, 0.15), rgba(40, 20, 80, 0.1));
+}
+
+.weather-overlay-sun {
+  background: radial-gradient(ellipse at top, rgba(220, 180, 50, 0.12), transparent 70%);
+}
+
+.weather-overlay-rainbow {
+  background: linear-gradient(135deg, 
+    rgba(255, 100, 100, 0.05), 
+    rgba(255, 200, 50, 0.05), 
+    rgba(50, 200, 100, 0.08), 
+    rgba(50, 150, 255, 0.06)
+  );
+}
+
+.weather-overlay-night {
+  background: radial-gradient(ellipse at center, rgba(10, 5, 30, 0.4), rgba(5, 2, 15, 0.2));
+}
+
+/* HUD rage meter */
+@keyframes rageGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(220, 50, 50, 0.6); }
+  50% { box-shadow: 0 0 20px rgba(220, 50, 50, 0.9), 0 0 40px rgba(220, 50, 50, 0.3); }
+}
+
+.rage-critical {
+  animation: rageGlow 0.8s ease-in-out infinite;
+}
+
+/* Score badge pulse */
+@keyframes scorePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.score-update {
+  animation: scorePulse 0.3s ease-in-out;
+}
+
+/* Game screen transitions */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in { animation: fadeIn 0.4s ease-out; }
+.slide-up { animation: slideUp 0.5s ease-out; }
+
+/* Particle float animation */
+@keyframes particleFloat {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-30px) scale(0.5); }
+}
+
+/* Neon text glow */
+.neon-green {
+  color: #4ade80;
+  text-shadow: 0 0 10px rgba(74, 222, 128, 0.5), 0 0 20px rgba(74, 222, 128, 0.2);
+}
+
+.neon-gold {
+  color: #fbbf24;
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.5), 0 0 20px rgba(251, 191, 36, 0.2);
+}
+
+.neon-red {
+  color: #f87171;
+  text-shadow: 0 0 10px rgba(248, 113, 113, 0.5), 0 0 20px rgba(248, 113, 113, 0.2);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: oklch(0.16 0.03 160); }
+::-webkit-scrollbar-thumb { background: oklch(0.35 0.08 145); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: oklch(0.50 0.12 145); }
