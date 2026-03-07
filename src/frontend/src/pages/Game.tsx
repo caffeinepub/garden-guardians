@@ -191,8 +191,8 @@ function StartScreen({
         {/* Instructions */}
         <div className="w-full max-w-xs bg-green-950/40 border border-green-800/40 rounded-xl p-3 text-xs text-green-300/80 space-y-1">
           <div className="font-bold text-green-300 mb-1">How to Play:</div>
-          <div>🖱️ Click canvas to direct riders to a spot</div>
-          <div>👆 Click a villain to send all riders to attack</div>
+          <div>🌳 Brothers auto-plant and protect trees</div>
+          <div>👆 Click on a villain to highlight the threat</div>
           <div>🌳 Protect trees — grow 100 ancient trees to win!</div>
           <div>⎵ Space = Pause &nbsp;|&nbsp; R = Restart (game over)</div>
           <div>😡 Watch Auli&apos;s rage meter — full = BEAST MODE!</div>
@@ -777,7 +777,7 @@ export default function Game() {
 
         {/* Bottom info bar overlay */}
         <div className="absolute bottom-0 left-0 right-0 bg-black/60 border-t border-green-900/30 px-4 py-1 flex items-center justify-between text-[10px] text-slate-500">
-          <span>🖱️ Click to direct riders · Click villain to attack</span>
+          <span>🌳 Brothers auto-protect · Click villain to flag</span>
           <span>⎵ Pause · R Restart</span>
           <span>🏆 Grow 100 ancient trees to win</span>
         </div>

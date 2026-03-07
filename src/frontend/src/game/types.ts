@@ -13,9 +13,13 @@ export type TreeType = "normal" | "fruit" | "flower" | "ancient";
 
 export type VillainType = "chotu" | "pari" | "pihu" | "auli" | "samar" | "nonu";
 
-export type RiderName = "Nishi" | "Mohini" | "Gaytri" | "Meenakshi" | "Sashi";
-
-export type BrotherName = "Amit" | "Ashok" | "Pankaj" | "Bharat" | "Neeraj";
+export type BrotherName =
+  | "Amit"
+  | "Ashok"
+  | "Pankaj"
+  | "Bharat"
+  | "Neeraj"
+  | "Papaji";
 
 export type AreaName =
   | "Backyard Garden"
@@ -87,20 +91,6 @@ export interface Villain {
   hideTimer: number; // How long Auli stays hidden
 }
 
-export interface Rider {
-  id: number;
-  name: RiderName;
-  pos: Vector2;
-  target: Vector2 | null;
-  villainTarget: number | null;
-  speed: number;
-  health: number;
-  shieldTimer: number;
-  healCooldown: number;
-  comboTimer: number;
-  rushingToSubbu: boolean;
-}
-
 export interface Brother {
   id: number;
   name: BrotherName;
@@ -110,6 +100,24 @@ export interface Brother {
   protectRadius: number;
   rushingToSubbu: boolean;
   speedBoost: number;
+  abilityCooldown: number; // general ability cooldown
+  abilityTimer: number; // active ability duration
+  // Papaji-specific
+  caughtVillainId: number | null; // villain being carried/caught
+  catchCooldown: number; // cooldown between catches
+  grabAnimTimer: number; // animation timer for grab action
+}
+
+export interface Shield {
+  id: number;
+  pos: Vector2;
+  vel: Vector2;
+  ownerId: number; // brother id
+  bouncesLeft: number; // starts at 3
+  hitVillains: number[]; // villain ids already hit
+  returnPhase: boolean;
+  life: number;
+  angle: number;
 }
 
 export interface Subbu {
@@ -138,7 +146,9 @@ export interface Particle {
     | "heal"
     | "fruit"
     | "shockwave"
-    | "lightning";
+    | "lightning"
+    | "shield"
+    | "stomp";
 }
 
 export interface FloatingText {
@@ -169,7 +179,8 @@ export interface GameState {
   arrows: Arrow[];
   bombs: Bomb[];
   bombIdCounter: number;
-  riders: Rider[];
+  shields: Shield[];
+  shieldIdCounter: number;
   brothers: Brother[];
   subbu: Subbu;
   particles: Particle[];
@@ -193,13 +204,11 @@ export interface GameState {
   comboAttackCooldown: number;
   treeIdCounter: number;
   villainIdCounter: number;
-  riderIdCounter: number;
   brotherIdCounter: number;
   particleIdCounter: number;
   floatTextIdCounter: number;
   shockwaveIdCounter: number;
   clickTarget: Vector2 | null;
-  selectedRiderIndex: number;
   paused: boolean;
   gameOver: boolean;
   victory: boolean;

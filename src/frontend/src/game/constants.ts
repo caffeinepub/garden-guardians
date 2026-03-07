@@ -59,6 +59,8 @@ export const COLORS = {
   // Brothers
   brother: "#22c55e",
   brotherOutline: "#ffffff",
+  papaji: "#d97706",
+  papajiAura: "rgba(245,158,11,0.2)",
 
   // Subbu
   subbu: "#fcd34d",
@@ -104,12 +106,4 @@ export const AREA_TERRAIN: Record<string, string> = {
   "River Garden": "#0f1e2d",
   "Mountain Orchard": "#1a1a0f",
   "Ancient Sacred Forest": "#0d0f1a",
-};
-
-export const RIDER_COLORS: Record<string, string> = {
-  Nishi: "#38bdf8",
-  Mohini: "#c084fc",
-  Gaytri: "#4ade80",
-  Meenakshi: "#fbbf24",
-  Sashi: "#f87171",
 };

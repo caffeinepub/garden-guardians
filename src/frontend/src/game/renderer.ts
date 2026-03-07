@@ -5,7 +5,6 @@ import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
   COLORS,
-  RIDER_COLORS,
   TREE_SLOTS,
   WAVE_DURATION,
 } from "./constants";
@@ -16,7 +15,7 @@ import type {
   Brother,
   GameState,
   Particle,
-  Rider,
+  Shield,
   Tree,
   Villain,
 } from "./types";
@@ -107,9 +106,6 @@ export function renderGame(ctx: CanvasRenderingContext2D, gs: GameState): void {
   // Brothers
   for (const b of gs.brothers) drawBrother(ctx, b, gs);
 
-  // Riders
-  for (const r of gs.riders) drawRider(ctx, r, gs);
-
   // Subbu
   drawSubbu(ctx, gs);
 
@@ -121,6 +117,9 @@ export function renderGame(ctx: CanvasRenderingContext2D, gs: GameState): void {
 
   // Bombs (Samar & Nonu)
   for (const bomb of gs.bombs) drawBomb(ctx, bomb);
+
+  // Shields (Bharat ability)
+  for (const shield of gs.shields) drawShield(ctx, shield);
 
   // Particles
   for (const p of gs.particles) {
@@ -1587,6 +1586,70 @@ function drawBomb(ctx: CanvasRenderingContext2D, bomb: Bomb): void {
   ctx.restore();
 }
 
+// ─── Shield Renderer (Bharat ability) ────────────────────────────────────────
+
+function drawShield(ctx: CanvasRenderingContext2D, shield: Shield): void {
+  ctx.save();
+  const alpha = Math.min(1, shield.life / 30);
+  ctx.globalAlpha = alpha;
+
+  const x = shield.pos.x;
+  const y = shield.pos.y;
+  const angle = shield.angle;
+  const size = 10;
+
+  // Trail glow
+  const trailGrad = ctx.createRadialGradient(x, y, 1, x, y, size + 6);
+  trailGrad.addColorStop(
+    0,
+    shield.returnPhase ? "rgba(100,200,255,0.5)" : "rgba(56,189,248,0.4)",
+  );
+  trailGrad.addColorStop(1, "transparent");
+  ctx.fillStyle = trailGrad;
+  ctx.fillRect(x - size - 6, y - size - 6, (size + 6) * 2, (size + 6) * 2);
+
+  // Spinning hexagonal shield body
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+
+  const sides = 6;
+  ctx.beginPath();
+  for (let i = 0; i < sides; i++) {
+    const a = (i * Math.PI * 2) / sides;
+    const px = Math.cos(a) * size;
+    const py = Math.sin(a) * size;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+
+  const shieldGrad = ctx.createRadialGradient(0, 0, 1, 0, 0, size);
+  shieldGrad.addColorStop(0, "#e0f2fe");
+  shieldGrad.addColorStop(0.5, "#38bdf8");
+  shieldGrad.addColorStop(1, "#0284c7");
+  ctx.fillStyle = shieldGrad;
+  ctx.fill();
+  ctx.strokeStyle = "#7dd3fc";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Shield cross detail
+  ctx.strokeStyle = "rgba(255,255,255,0.6)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, -size * 0.55);
+  ctx.lineTo(0, size * 0.55);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-size * 0.55, 0);
+  ctx.lineTo(size * 0.55, 0);
+  ctx.stroke();
+
+  ctx.restore();
+  ctx.restore();
+}
+
 // ─── Arrow Renderer ───────────────────────────────────────────────────────────
 
 function drawArrow(ctx: CanvasRenderingContext2D, arrow: Arrow): void {
@@ -1627,159 +1690,229 @@ function drawArrow(ctx: CanvasRenderingContext2D, arrow: Arrow): void {
   ctx.restore();
 }
 
-// ─── Rider Renderer ───────────────────────────────────────────────────────────
+// ─── Papaji Renderer (Big Defender) ──────────────────────────────────────────
 
-function drawRider(
+function drawPapaji(
   ctx: CanvasRenderingContext2D,
-  r: Rider,
-  gs: GameState,
+  b: Brother,
+  _gs: GameState,
 ): void {
+  const x = b.pos.x;
+  const y = b.pos.y;
+  const t = Date.now();
+  const isCarrying = b.caughtVillainId !== null;
+  const isGrabbing = b.grabAnimTimer > 0;
+
+  // Presence aura — golden patrol glow
+  const aura = ctx.createRadialGradient(x, y, 8, x, y, 55);
+  aura.addColorStop(0, "rgba(245,158,11,0.18)");
+  aura.addColorStop(1, "transparent");
   ctx.save();
-  const color = RIDER_COLORS[r.name] ?? "#3b82f6";
+  ctx.fillStyle = aura;
+  ctx.beginPath();
+  ctx.arc(x, y, 55, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 
-  // Ground shadow
-  drawEllipseShadow(ctx, r.pos.x, r.pos.y + 12, 18, 5);
+  // Ground shadow (extra large — big guy!)
+  drawEllipseShadow(ctx, x, y + 20, 22, 7);
 
-  // Shield bubble
-  if (r.shieldTimer > 0) {
+  // Big legs
+  const legSwing = isCarrying ? 0 : Math.sin(t / 140) * 4;
+  ctx.save();
+  // Left leg
+  ctx.fillStyle = "#1e3a5f";
+  ctx.fillRect(x - 10, y + 14, 9, 18 + legSwing);
+  // Right leg
+  ctx.fillRect(x + 1, y + 14, 9, 18 - legSwing);
+  // Boots
+  ctx.fillStyle = "#0f172a";
+  ctx.fillRect(x - 12, y + 28, 11, 7);
+  ctx.fillRect(x + 1, y + 28, 11, 7);
+  ctx.restore();
+
+  // Body — wide barrel chest
+  ctx.save();
+  const bodyGrad = ctx.createRadialGradient(x - 6, y - 8, 3, x, y, 22);
+  bodyGrad.addColorStop(0, "#d97706");
+  bodyGrad.addColorStop(0.6, "#92400e");
+  bodyGrad.addColorStop(1, "#451a03");
+  ctx.beginPath();
+  ctx.ellipse(x, y, 20, 17, 0, 0, Math.PI * 2);
+  ctx.fillStyle = bodyGrad;
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,200,80,0.5)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+
+  // Belt
+  ctx.save();
+  ctx.fillStyle = "#1c1917";
+  ctx.fillRect(x - 20, y + 10, 40, 5);
+  ctx.fillStyle = "#fbbf24";
+  ctx.fillRect(x - 4, y + 10, 8, 5);
+  ctx.restore();
+
+  // Arms — huge, outstretched
+  const armSwing = isCarrying ? -0.4 : Math.sin(t / 140 + Math.PI) * 0.08;
+  ctx.save();
+  // Left arm
+  ctx.strokeStyle = "#92400e";
+  ctx.lineWidth = 9;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x - 18, y - 5);
+  ctx.lineTo(x - 28 - (isGrabbing ? 8 : 0), y + 8 + armSwing * 20);
+  ctx.stroke();
+  // Right arm (extended when carrying/grabbing)
+  ctx.beginPath();
+  ctx.moveTo(x + 18, y - 5);
+  ctx.lineTo(
+    x + 28 + (isCarrying || isGrabbing ? 12 : 0),
+    y + 8 - armSwing * 20,
+  );
+  ctx.stroke();
+  // Hands (large fists)
+  ctx.fillStyle = "#FDBCB4";
+  ctx.beginPath();
+  ctx.arc(
+    x - 28 - (isGrabbing ? 8 : 0),
+    y + 8 + armSwing * 20,
+    6,
+    0,
+    Math.PI * 2,
+  );
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(
+    x + 28 + (isCarrying || isGrabbing ? 12 : 0),
+    y + 8 - armSwing * 20,
+    6,
+    0,
+    Math.PI * 2,
+  );
+  ctx.fill();
+  ctx.restore();
+
+  // Head — big round face with moustache
+  ctx.save();
+  // Neck
+  ctx.fillStyle = "#FDBCB4";
+  ctx.fillRect(x - 7, y - 22, 14, 8);
+  // Head
+  ctx.beginPath();
+  ctx.arc(x, y - 30, 16, 0, Math.PI * 2);
+  const headGrad = ctx.createRadialGradient(x - 4, y - 34, 3, x, y - 30, 16);
+  headGrad.addColorStop(0, "#fcd5ba");
+  headGrad.addColorStop(1, "#d97706");
+  ctx.fillStyle = headGrad;
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.15)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+
+  // Turban / big head covering (Papaji wears a turban!)
+  ctx.save();
+  const turbanGrad = ctx.createLinearGradient(x - 16, y - 46, x + 16, y - 30);
+  turbanGrad.addColorStop(0, "#f97316");
+  turbanGrad.addColorStop(0.5, "#fb923c");
+  turbanGrad.addColorStop(1, "#c2410c");
+  ctx.beginPath();
+  ctx.arc(x, y - 32, 16, Math.PI, 0);
+  ctx.fillStyle = turbanGrad;
+  ctx.fill();
+  // Turban wrap lines
+  ctx.strokeStyle = "#fed7aa";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 4; i++) {
     ctx.beginPath();
-    ctx.arc(r.pos.x, r.pos.y, 24, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(200,240,255,0.12)";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(200,240,255,0.6)";
-    ctx.lineWidth = 2;
+    ctx.arc(x, y - 32, 13 - i * 1.5, Math.PI * 1.1, Math.PI * 1.9);
     ctx.stroke();
   }
-
-  // Speed lines when rushing to Subbu
-  if (r.rushingToSubbu) {
-    ctx.strokeStyle = `${color}80`;
-    ctx.lineWidth = 1.5;
-    for (let i = 1; i <= 3; i++) {
-      const bx = r.pos.x + i * 6;
-      ctx.globalAlpha = 0.5 - i * 0.12;
-      ctx.beginPath();
-      ctx.moveTo(bx, r.pos.y - 4);
-      ctx.lineTo(bx + 10, r.pos.y - 4);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(bx + 2, r.pos.y + 1);
-      ctx.lineTo(bx + 10, r.pos.y + 1);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-  }
-
-  // Bike frame (diamond shape connecting front and rear)
-  const bx = r.pos.x;
-  const by = r.pos.y;
-  const frontWheelX = bx + 9;
-  const rearWheelX = bx - 9;
-  const axleY = by + 6;
-  const frameTop = by - 3;
-
-  // Frame lines
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
+  // Top knot
   ctx.beginPath();
-  // Main diamond frame
-  ctx.moveTo(rearWheelX, axleY);
-  ctx.lineTo(bx - 2, frameTop);
-  ctx.lineTo(bx + 3, frameTop);
-  ctx.lineTo(frontWheelX, axleY);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(bx - 2, frameTop);
-  ctx.lineTo(bx - 6, axleY);
-  ctx.stroke();
-
-  // Handlebars
-  ctx.strokeStyle = "#94a3b8";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(frontWheelX - 2, frameTop + 1);
-  ctx.lineTo(frontWheelX + 3, frameTop - 4);
-  ctx.stroke();
-
-  // Rear wheel
-  ctx.beginPath();
-  ctx.arc(rearWheelX, axleY, 7, 0, Math.PI * 2);
-  ctx.fillStyle = "#1e293b";
-  ctx.fill();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  // Wheel hub
-  ctx.beginPath();
-  ctx.arc(rearWheelX, axleY, 2, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.fill();
-
-  // Front wheel
-  ctx.beginPath();
-  ctx.arc(frontWheelX, axleY, 7, 0, Math.PI * 2);
-  ctx.fillStyle = "#1e293b";
-  ctx.fill();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(frontWheelX, axleY, 2, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.fill();
-
-  // Rider body (leaning forward)
-  ctx.save();
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.ellipse(bx, frameTop - 2, 4, 6, -0.25, 0, Math.PI * 2);
+  ctx.arc(x, y - 46, 5, 0, Math.PI * 2);
+  ctx.fillStyle = "#f97316";
   ctx.fill();
   ctx.restore();
 
-  // Rider head
-  ctx.beginPath();
-  ctx.arc(bx + 2, frameTop - 10, 5, 0, Math.PI * 2);
-  ctx.fillStyle = "#FDBCB4";
-  ctx.fill();
-
-  // Helmet (arc on top of head)
+  // Eyebrows — thick and stern
   ctx.save();
+  ctx.strokeStyle = "#3d1a08";
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.arc(bx + 2, frameTop - 10, 5, Math.PI, 0);
-  ctx.fillStyle = color;
-  ctx.fill();
+  ctx.moveTo(x - 12, y - 33);
+  ctx.lineTo(x - 5, y - 35);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x + 12, y - 33);
+  ctx.lineTo(x + 5, y - 35);
+  ctx.stroke();
   ctx.restore();
 
-  // Name
-  ctx.font = "bold 8px Sora, sans-serif";
+  // Eyes
+  ctx.fillStyle = "#1e293b";
+  ctx.beginPath();
+  ctx.arc(x - 5, y - 30, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 5, y - 30, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+  // Whites
   ctx.fillStyle = "#ffffff";
-  ctx.textAlign = "center";
-  ctx.shadowColor = "#000000";
-  ctx.shadowBlur = 3;
-  ctx.fillText(r.name, r.pos.x, r.pos.y - 20);
-  ctx.shadowBlur = 0;
-  ctx.textAlign = "left";
+  ctx.beginPath();
+  ctx.arc(x - 5.5, y - 31, 1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 4.5, y - 31, 1, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Night glow halo
-  if (gs.weather === "night") {
-    const nightGlow = ctx.createRadialGradient(
-      r.pos.x,
-      r.pos.y,
-      4,
-      r.pos.x,
-      r.pos.y,
-      22,
-    );
-    nightGlow.addColorStop(0, `${color}40`);
-    nightGlow.addColorStop(1, "transparent");
+  // Big moustache
+  ctx.save();
+  ctx.fillStyle = "#3d1a08";
+  ctx.beginPath();
+  // Left half
+  ctx.moveTo(x - 1, y - 25);
+  ctx.bezierCurveTo(x - 4, y - 26, x - 12, y - 24, x - 13, y - 21);
+  ctx.bezierCurveTo(x - 11, y - 20, x - 6, y - 22, x - 1, y - 23);
+  ctx.closePath();
+  ctx.fill();
+  // Right half
+  ctx.beginPath();
+  ctx.moveTo(x + 1, y - 25);
+  ctx.bezierCurveTo(x + 4, y - 26, x + 12, y - 24, x + 13, y - 21);
+  ctx.bezierCurveTo(x + 11, y - 20, x + 6, y - 22, x + 1, y - 23);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // "CAUGHT!" effect when grabbing
+  if (isGrabbing) {
     ctx.save();
-    ctx.globalAlpha = 0.5;
-    ctx.fillStyle = nightGlow;
-    ctx.fillRect(r.pos.x - 22, r.pos.y - 22, 44, 44);
+    const grabAlpha = b.grabAnimTimer / 30;
+    ctx.globalAlpha = grabAlpha;
+    ctx.font = "bold 14px Sora, sans-serif";
+    ctx.fillStyle = "#fbbf24";
+    ctx.textAlign = "center";
+    ctx.shadowColor = "#000";
+    ctx.shadowBlur = 5;
+    ctx.fillText("✋ GOT YOU!", x, y - 55);
+    ctx.shadowBlur = 0;
     ctx.restore();
   }
 
-  ctx.restore();
+  // Name label
+  ctx.font = "bold 9px Sora, sans-serif";
+  ctx.fillStyle = "#fbbf24";
+  ctx.textAlign = "center";
+  ctx.shadowColor = "#000000";
+  ctx.shadowBlur = 3;
+  ctx.fillText("👴 Papaji", x, y - 52);
+  ctx.shadowBlur = 0;
+  ctx.textAlign = "left";
 }
 
 // ─── Brother Renderer ─────────────────────────────────────────────────────────
@@ -1789,6 +1922,14 @@ function drawBrother(
   b: Brother,
   gs: GameState,
 ): void {
+  // Papaji has his own special renderer
+  if (b.name === "Papaji") {
+    ctx.save();
+    drawPapaji(ctx, b, gs);
+    ctx.restore();
+    return;
+  }
+
   ctx.save();
 
   const x = b.pos.x;
@@ -1883,6 +2024,89 @@ function drawBrother(
     ctx.strokeStyle = "#166534";
     ctx.lineWidth = 0.5;
     ctx.stroke();
+    ctx.restore();
+  }
+
+  // Ability visual indicators per brother
+  if (b.name === "Ashok") {
+    // Green healing aura ring pulse
+    const auAnim = 0.12 + Math.sin(Date.now() / 400 + b.id) * 0.05;
+    const auGrad = ctx.createRadialGradient(x, y, 4, x, y, 22);
+    auGrad.addColorStop(0, "transparent");
+    auGrad.addColorStop(1, `rgba(74,222,128,${auAnim})`);
+    ctx.save();
+    ctx.fillStyle = auGrad;
+    ctx.beginPath();
+    ctx.arc(x, y, 22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  if (b.name === "Pankaj") {
+    // Ground stomp vibration lines
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    ctx.strokeStyle = "#f97316";
+    ctx.lineWidth = 1;
+    for (let k = 1; k <= 2; k++) {
+      const r = 14 + k * 6 + Math.sin(Date.now() / 200 + k) * 2;
+      ctx.beginPath();
+      ctx.arc(x, y + 6, r, 0.1 * Math.PI, 0.9 * Math.PI);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  if (b.name === "Bharat") {
+    // Small spinning shield icon above head
+    ctx.save();
+    ctx.translate(x + 8, y - 18);
+    ctx.rotate(Date.now() / 300);
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    for (let k = 0; k < 6; k++) {
+      const a = (k * Math.PI * 2) / 6;
+      const px = Math.cos(a) * 5;
+      const py = Math.sin(a) * 5;
+      if (k === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = "#7dd3fc";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  if (b.name === "Neeraj" && b.speedBoost > 0) {
+    // Speed lines (chasing)
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    ctx.strokeStyle = "#a3e635";
+    ctx.lineWidth = 1.5;
+    for (let k = 1; k <= 3; k++) {
+      ctx.beginPath();
+      ctx.moveTo(x - k * 5, y - 4 + k * 2);
+      ctx.lineTo(x - k * 5 - 8, y - 4 + k * 2);
+      ctx.globalAlpha = 0.5 - k * 0.12;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  if (b.name === "Amit" && b.speedBoost > 0) {
+    // Yellow speed flash
+    ctx.save();
+    ctx.globalAlpha = 0.4;
+    ctx.strokeStyle = "#fde68a";
+    ctx.lineWidth = 1.5;
+    for (let k = 1; k <= 3; k++) {
+      ctx.beginPath();
+      ctx.moveTo(x + k * 4, y + k * 2);
+      ctx.lineTo(x + k * 4 + 8, y + k * 2);
+      ctx.globalAlpha = 0.45 - k * 0.1;
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
