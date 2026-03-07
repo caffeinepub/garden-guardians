@@ -1,9 +1,9 @@
 // ─── Game Constants ──────────────────────────────────────────────────────────
 
-export const CANVAS_WIDTH = 900;
-export const CANVAS_HEIGHT = 580;
+export const CANVAS_WIDTH = 1200;
+export const CANVAS_HEIGHT = 700;
 
-export const TREE_GRID_COLS = 9;
+export const TREE_GRID_COLS = 11;
 export const TREE_GRID_ROWS = 6;
 
 // Tree slot positions (grid-based)
@@ -11,8 +11,8 @@ export const TREE_SLOTS: Array<{ x: number; y: number }> = [];
 for (let row = 0; row < TREE_GRID_ROWS; row++) {
   for (let col = 0; col < TREE_GRID_COLS; col++) {
     TREE_SLOTS.push({
-      x: 70 + col * 90,
-      y: 80 + row * 80,
+      x: 90 + col * 100,
+      y: 80 + row * 90,
     });
   }
 }

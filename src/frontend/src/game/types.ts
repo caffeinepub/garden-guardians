@@ -11,7 +11,7 @@ export type WeatherType = "sun" | "rain" | "storm" | "rainbow" | "night";
 
 export type TreeType = "normal" | "fruit" | "flower" | "ancient";
 
-export type VillainType = "chotu" | "pari" | "pihu" | "auli";
+export type VillainType = "chotu" | "pari" | "pihu" | "auli" | "samar" | "nonu";
 
 export type RiderName = "Nishi" | "Mohini" | "Gaytri" | "Meenakshi" | "Sashi";
 
@@ -45,6 +45,25 @@ export interface Tree {
   fruitTimer: number; // ticks until fruit produced
 }
 
+export interface Arrow {
+  id: number;
+  pos: Vector2;
+  vel: Vector2;
+  ownerId: number; // villain id
+  life: number;
+  angle: number;
+}
+
+export interface Bomb {
+  id: number;
+  pos: Vector2;
+  vel: Vector2;
+  ownerId: number; // villain id
+  life: number;
+  fuseTimer: number; // counts down to explosion
+  angle: number;
+}
+
 export interface Villain {
   id: number;
   type: VillainType;
@@ -63,6 +82,9 @@ export interface Villain {
   isClone: boolean; // Pihu fake copy
   opacity: number; // Pihu stealth
   evolutionLevel: number; // increases each wave
+  hidingBehindTree: boolean; // Auli specific - hiding
+  arrowCooldown: number; // Auli arrow fire cooldown
+  hideTimer: number; // How long Auli stays hidden
 }
 
 export interface Rider {
@@ -144,12 +166,16 @@ export interface GameState {
   area: AreaName;
   trees: Tree[];
   villains: Villain[];
+  arrows: Arrow[];
+  bombs: Bomb[];
+  bombIdCounter: number;
   riders: Rider[];
   brothers: Brother[];
   subbu: Subbu;
   particles: Particle[];
   floatingTexts: FloatingText[];
   shockwaves: Shockwave[];
+  arrowIdCounter: number;
   weather: WeatherType;
   weatherTimer: number;
   natureAnger: boolean;

@@ -13,6 +13,8 @@ import {
 } from "./constants";
 import type {
   AreaName,
+  Arrow,
+  Bomb,
   Brother,
   BrotherName,
   FloatingText,
@@ -78,7 +80,7 @@ export function createInitialState(playerName: string): GameState {
     trees.push(createTree(treeId++, slot.x, slot.y, pickRandomTreeType()));
   }
 
-  // Create initial riders (5 riders)
+  // Create initial riders (5 female riders) — positioned on RIGHT side of garden
   const riderNames: RiderName[] = [
     "Nishi",
     "Mohini",
@@ -89,7 +91,7 @@ export function createInitialState(playerName: string): GameState {
   const riders: Rider[] = riderNames.map((name, i) => ({
     id: riderId++,
     name,
-    pos: { x: 80 + i * 160, y: CANVAS_HEIGHT - 40 },
+    pos: { x: CANVAS_WIDTH * 0.6 + i * 110, y: CANVAS_HEIGHT - 45 },
     target: null,
     villainTarget: null,
     speed: getRiderSpeed(name),
@@ -100,7 +102,7 @@ export function createInitialState(playerName: string): GameState {
     rushingToSubbu: false,
   }));
 
-  // Create brothers (5)
+  // Create brothers (5 males) — positioned on LEFT side of garden
   const brotherNames: BrotherName[] = [
     "Amit",
     "Ashok",
@@ -111,7 +113,7 @@ export function createInitialState(playerName: string): GameState {
   const brothers: Brother[] = brotherNames.map((name, i) => ({
     id: brotherId++,
     name,
-    pos: { x: 120 + i * 150, y: CANVAS_HEIGHT - 20 },
+    pos: { x: 60 + i * 110, y: CANVAS_HEIGHT - 25 },
     target: null,
     plantCooldown: randInt(60, 180),
     protectRadius: 80,
@@ -137,6 +139,9 @@ export function createInitialState(playerName: string): GameState {
     area: "Backyard Garden",
     trees,
     villains: [],
+    arrows: [],
+    bombs: [],
+    bombIdCounter: 0,
     riders,
     brothers,
     subbu,
@@ -165,6 +170,7 @@ export function createInitialState(playerName: string): GameState {
     particleIdCounter: 0,
     floatTextIdCounter: 0,
     shockwaveIdCounter: 0,
+    arrowIdCounter: 0,
     clickTarget: null,
     selectedRiderIndex: -1,
     paused: false,
@@ -224,7 +230,14 @@ function getRiderSpeed(name: RiderName): number {
 
 export function spawnWave(gs: GameState): void {
   const wave = gs.wave;
-  const villainTypes: VillainType[] = ["chotu", "pari", "pihu", "auli"];
+  const villainTypes: VillainType[] = [
+    "chotu",
+    "pari",
+    "pihu",
+    "auli",
+    "samar",
+    "nonu",
+  ];
 
   // Scale difficulty with wave
   const count = Math.min(2 + wave, 10);
@@ -283,6 +296,8 @@ function createVillain(
     pari: "Pari",
     pihu: "Pihu",
     auli: "Auli",
+    samar: "Samar",
+    nonu: "Nonu",
   };
 
   const baseHealthMap: Record<VillainType, number> = {
@@ -290,6 +305,8 @@ function createVillain(
     pari: 80,
     pihu: 70,
     auli: 50,
+    samar: 90,
+    nonu: 85,
   };
 
   const baseSpeedMap: Record<VillainType, number> = {
@@ -297,6 +314,8 @@ function createVillain(
     pari: 1.2,
     pihu: 1.4,
     auli: 1.0,
+    samar: 1.3,
+    nonu: 1.1,
   };
 
   return {
@@ -317,6 +336,9 @@ function createVillain(
     isClone: false,
     opacity: 1,
     evolutionLevel: evolveLvl,
+    hidingBehindTree: false,
+    arrowCooldown: 0,
+    hideTimer: 0,
   };
 }
 
@@ -405,6 +427,12 @@ export function updateGame(gs: GameState): void {
 
   // Update villains
   updateVillains(gs, weatherMod);
+
+  // Update arrows
+  updateArrows(gs);
+
+  // Update bombs
+  updateBombs(gs);
 
   // Update riders
   updateRiders(gs, weatherMod);
@@ -585,13 +613,18 @@ function updateVillains(gs: GameState, wm: { villainSpeed: number }): void {
       continue;
     }
 
-    // Move toward target
-    const dir = normalize({
-      x: targetTree.pos.x - v.pos.x,
-      y: targetTree.pos.y - v.pos.y,
-    });
-    v.pos.x += dir.x * speed;
-    v.pos.y += dir.y * speed;
+    // Auli: skip normal movement when hiding behind tree (she attacks from range)
+    if (v.type === "auli" && v.hidingBehindTree && !gs.auliBeastMode) {
+      // Stay put, don't move closer
+    } else {
+      // Move toward target
+      const dir = normalize({
+        x: targetTree.pos.x - v.pos.x,
+        y: targetTree.pos.y - v.pos.y,
+      });
+      v.pos.x += dir.x * speed;
+      v.pos.y += dir.y * speed;
+    }
 
     // Pihu stealth near trees
     if (v.type === "pihu") {
@@ -599,9 +632,12 @@ function updateVillains(gs: GameState, wm: { villainSpeed: number }): void {
       v.opacity = nearTree ? 0.4 : 1.0;
     }
 
-    // Attack if close
+    // Attack if close (skip for Auli when hiding — she uses arrows instead)
     const d = dist(v.pos, targetTree.pos);
-    if (d < 25) {
+    if (
+      d < 25 &&
+      !(v.type === "auli" && v.hidingBehindTree && !gs.auliBeastMode)
+    ) {
       v.attackTimer++;
       let attackRate = 1;
       if (v.type === "pari") attackRate = 3;
@@ -704,26 +740,273 @@ function updateVillains(gs: GameState, wm: { villainSpeed: number }): void {
       }
     }
 
-    // Auli beast mode visual
-    if (v.type === "auli" && gs.auliBeastMode) {
-      v.beastMode = true;
-      // Push nearby riders away
-      for (const r of gs.riders) {
-        if (dist(v.pos, r.pos) < 60) {
-          const pushDir = normalize({
-            x: r.pos.x - v.pos.x,
-            y: r.pos.y - v.pos.y,
-          });
-          r.pos.x += pushDir.x * 8;
-          r.pos.y += pushDir.y * 8;
-          r.pos.x = Math.max(0, Math.min(CANVAS_WIDTH, r.pos.x));
-          r.pos.y = Math.max(0, Math.min(CANVAS_HEIGHT, r.pos.y));
+    // Samar & Nonu: bomb throwers — lob bombs from a distance
+    if (v.type === "samar" || v.type === "nonu") {
+      if (v.arrowCooldown > 0) {
+        v.arrowCooldown--;
+      } else {
+        // Find nearest cluster of trees to maximise damage
+        let bestTarget: Vector2 | null = null;
+        let bestClusterSize = 0;
+        for (const t of gs.trees) {
+          if (t.shielded) continue;
+          const d = dist(v.pos, t.pos);
+          if (d < 50 || d > 450) continue;
+          // Count how many trees are within blast radius of this tree
+          const clusterSize = gs.trees.filter(
+            (other) => dist(t.pos, other.pos) < 120,
+          ).length;
+          if (clusterSize > bestClusterSize) {
+            bestClusterSize = clusterSize;
+            bestTarget = { ...t.pos };
+          }
+        }
+        if (bestTarget) {
+          spawnBomb(gs, v, bestTarget);
+          // Samar throws faster than Nonu
+          v.arrowCooldown = v.type === "samar" ? 220 : 300;
         }
       }
-    } else if (v.type === "auli") {
-      v.beastMode = false;
+    }
+
+    // Auli beast mode visual + bow-and-arrow hiding mechanic
+    if (v.type === "auli") {
+      if (gs.auliBeastMode) {
+        v.beastMode = true;
+        v.hidingBehindTree = false;
+        // Push nearby riders away in beast mode
+        for (const r of gs.riders) {
+          if (dist(v.pos, r.pos) < 60) {
+            const pushDir = normalize({
+              x: r.pos.x - v.pos.x,
+              y: r.pos.y - v.pos.y,
+            });
+            r.pos.x += pushDir.x * 8;
+            r.pos.y += pushDir.y * 8;
+            r.pos.x = Math.max(0, Math.min(CANVAS_WIDTH, r.pos.x));
+            r.pos.y = Math.max(0, Math.min(CANVAS_HEIGHT, r.pos.y));
+          }
+        }
+      } else {
+        v.beastMode = false;
+
+        // Auli hides behind a tree and shoots arrows from a distance
+        if (v.arrowCooldown > 0) v.arrowCooldown--;
+        if (v.hideTimer > 0) v.hideTimer--;
+
+        // Find a hiding spot behind a tree
+        if (!v.hidingBehindTree && v.hideTimer === 0) {
+          const hidingTree = gs.trees.find((t) => dist(v.pos, t.pos) < 80);
+          if (hidingTree) {
+            v.hidingBehindTree = true;
+            v.hideTimer = 180 + randRange(60, 120);
+            v.opacity = 0.35; // mostly hidden
+          }
+        }
+
+        // While hiding, shoot arrows at trees from range
+        if (v.hidingBehindTree && v.arrowCooldown === 0) {
+          // Find the nearest unshielded tree to shoot
+          let bestTarget: Tree | null = null;
+          let bestDist = Number.POSITIVE_INFINITY;
+          for (const t of gs.trees) {
+            if (t.shielded) continue;
+            const d = dist(v.pos, t.pos);
+            if (d > 50 && d < 280 && d < bestDist) {
+              bestDist = d;
+              bestTarget = t;
+            }
+          }
+          if (bestTarget) {
+            spawnArrow(gs, v, bestTarget.pos);
+            v.arrowCooldown = 90;
+          }
+        }
+
+        // Stop hiding when hideTimer expires
+        if (v.hidingBehindTree && v.hideTimer <= 0) {
+          v.hidingBehindTree = false;
+          v.opacity = 1;
+          // Move away from tree to find new position
+          v.pos.x += (Math.random() - 0.5) * 60;
+          v.pos.y += (Math.random() - 0.5) * 60;
+          v.pos.x = Math.max(10, Math.min(CANVAS_WIDTH - 10, v.pos.x));
+          v.pos.y = Math.max(10, Math.min(CANVAS_HEIGHT - 10, v.pos.y));
+          v.hideTimer = 120; // cooldown before hiding again
+        }
+      }
     }
   }
+}
+
+function spawnArrow(gs: GameState, v: Villain, targetPos: Vector2): void {
+  const dir = normalize({
+    x: targetPos.x - v.pos.x,
+    y: targetPos.y - v.pos.y,
+  });
+  const speed = 5;
+  const angle = Math.atan2(dir.y, dir.x);
+  gs.arrows.push({
+    id: gs.arrowIdCounter++,
+    pos: { x: v.pos.x, y: v.pos.y },
+    vel: { x: dir.x * speed, y: dir.y * speed },
+    ownerId: v.id,
+    life: 80,
+    angle,
+  });
+  addFloatingText(gs, v.pos, "🏹", "#991b1b");
+}
+
+function spawnBomb(gs: GameState, v: Villain, targetPos: Vector2): void {
+  const dir = normalize({
+    x: targetPos.x - v.pos.x,
+    y: targetPos.y - v.pos.y,
+  });
+  const travelDist = dist(v.pos, targetPos);
+  // Arc speed: travel to target in ~40 frames
+  const frames = 40;
+  const speed = travelDist / frames;
+  gs.bombs.push({
+    id: gs.bombIdCounter++,
+    pos: { x: v.pos.x, y: v.pos.y },
+    vel: { x: dir.x * speed, y: dir.y * speed - 3 }, // slight upward arc
+    ownerId: v.id,
+    life: frames + 10,
+    fuseTimer: frames,
+    angle: Math.atan2(dir.y, dir.x),
+  });
+  addFloatingText(
+    gs,
+    v.pos,
+    "💣 BOMB!",
+    v.type === "samar" ? "#f97316" : "#ef4444",
+  );
+}
+
+function updateBombs(gs: GameState): void {
+  const BLAST_RADIUS = 120;
+  const MAX_TREES_DESTROYED = 10;
+
+  gs.bombs = gs.bombs.filter((bomb) => {
+    bomb.pos.x += bomb.vel.x;
+    bomb.pos.y += bomb.vel.y;
+    bomb.vel.y += 0.15; // gravity arc
+    bomb.fuseTimer--;
+    bomb.life--;
+
+    // Explode when fuse hits 0
+    if (bomb.fuseTimer <= 0) {
+      // Find all trees within blast radius, destroy up to 10
+      const treesInRange = gs.trees
+        .filter((t) => !t.shielded && dist(bomb.pos, t.pos) < BLAST_RADIUS)
+        .sort((a, b) => dist(bomb.pos, a.pos) - dist(bomb.pos, b.pos))
+        .slice(0, MAX_TREES_DESTROYED);
+
+      let destroyed = 0;
+      for (const t of treesInRange) {
+        spawnParticles(gs, t.pos, "rage", 8);
+        spawnParticles(gs, t.pos, "leaf", 6);
+        gs.auliRage = Math.min(100, gs.auliRage + AULI_RAGE_PER_TREE_DESTROY);
+        gs.score = Math.max(0, gs.score - 50);
+        gs.trees = gs.trees.filter((tr) => tr.id !== t.id);
+        destroyed++;
+      }
+
+      // Big explosion particles at bomb center
+      spawnParticles(gs, bomb.pos, "rage", 20);
+      spawnParticles(gs, bomb.pos, "sparkle", 8);
+      gs.shockwaves.push({
+        id: gs.shockwaveIdCounter++,
+        pos: { ...bomb.pos },
+        radius: 0,
+        maxRadius: BLAST_RADIUS,
+        life: 18,
+      });
+
+      if (destroyed > 0) {
+        addFloatingText(
+          gs,
+          bomb.pos,
+          `💥 BOOM! -${destroyed} trees!`,
+          "#ef4444",
+        );
+        gs.canvasShaking = true;
+        gs.shakeTimer = 20;
+      } else {
+        addFloatingText(gs, bomb.pos, "💥 BOOM!", "#f97316");
+      }
+
+      // Auli rage check
+      if (gs.auliRage >= 100 && !gs.auliBeastMode) {
+        gs.auliBeastMode = true;
+        gs.auliBeastTimer = 8 * 60;
+        gs.canvasShaking = true;
+        gs.shakeTimer = 30;
+        addFloatingText(
+          gs,
+          { x: CANVAS_WIDTH / 2, y: 60 },
+          "🔥 AULI BEAST MODE!",
+          "#ff2020",
+        );
+      }
+
+      return false; // remove bomb after exploding
+    }
+
+    // Hit a tree mid-flight? Explode early
+    for (const t of gs.trees) {
+      if (dist(bomb.pos, t.pos) < 15) {
+        bomb.fuseTimer = 0; // trigger explosion next frame effectively
+      }
+    }
+
+    return bomb.life > 0;
+  });
+}
+
+function updateArrows(gs: GameState): void {
+  gs.arrows = gs.arrows.filter((arrow) => {
+    arrow.pos.x += arrow.vel.x;
+    arrow.pos.y += arrow.vel.y;
+    arrow.life--;
+
+    // Check if arrow hits a tree
+    for (const t of gs.trees) {
+      if (dist(arrow.pos, t.pos) < 20) {
+        if (!t.shielded) {
+          t.health -= 8;
+          spawnParticles(gs, t.pos, "rage", 3);
+          if (t.health <= 0) {
+            spawnParticles(gs, t.pos, "leaf", 12);
+            addFloatingText(gs, t.pos, "💀 Arrow hit!", COLORS.rage);
+            gs.auliRage = Math.min(
+              100,
+              gs.auliRage + AULI_RAGE_PER_TREE_DESTROY,
+            );
+            gs.score = Math.max(0, gs.score - 50);
+            gs.trees = gs.trees.filter((tr) => tr.id !== t.id);
+            if (gs.auliRage >= 100 && !gs.auliBeastMode) {
+              gs.auliBeastMode = true;
+              gs.auliBeastTimer = 8 * 60;
+              gs.canvasShaking = true;
+              gs.shakeTimer = 30;
+              addFloatingText(
+                gs,
+                { x: CANVAS_WIDTH / 2, y: 60 },
+                "🔥 AULI BEAST MODE!",
+                "#ff2020",
+              );
+            }
+          }
+        } else {
+          addFloatingText(gs, t.pos, "🛡️", "#7dd3fc");
+        }
+        return false; // remove arrow on hit
+      }
+    }
+
+    return arrow.life > 0;
+  });
 }
 
 function findNearestUnprotectedTree(gs: GameState, v: Villain): number | null {

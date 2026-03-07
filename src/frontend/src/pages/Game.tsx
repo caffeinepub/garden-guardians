@@ -746,34 +746,37 @@ export default function Game() {
     );
   }
 
-  // Playing screen
+  // Playing screen — full screen, canvas fills viewport
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background overflow-hidden">
-      <div className="relative" style={{ maxWidth: CANVAS_WIDTH }}>
-        {/* HUD */}
-        {screen === "playing" && <GameHUD hud={hud} onPause={handlePause} />}
+    <div className="fixed inset-0 bg-background overflow-hidden flex flex-col">
+      {/* HUD */}
+      {screen === "playing" && <GameHUD hud={hud} onPause={handlePause} />}
 
-        {/* Canvas wrapper */}
-        <div className="relative mt-[72px]">
-          <canvas
-            ref={canvasRef}
-            data-ocid="game.canvas_target"
-            width={CANVAS_WIDTH}
-            height={CANVAS_HEIGHT}
-            onMouseDown={handleCanvasMouseDown}
-            className={`block border border-green-800/50 rounded-b-lg shadow-2xl shadow-green-950/80 cursor-crosshair ${canvasShake ? "canvas-shake" : ""}`}
-            style={{ maxWidth: "100%", background: "#0d1f1a" }}
-            tabIndex={0}
-          />
+      {/* Canvas fills remaining space */}
+      <div className="relative flex-1 mt-[72px]">
+        <canvas
+          ref={canvasRef}
+          data-ocid="game.canvas_target"
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
+          onMouseDown={handleCanvasMouseDown}
+          className={`block cursor-crosshair ${canvasShake ? "canvas-shake" : ""}`}
+          style={{
+            width: "100%",
+            height: "100%",
+            background: "#0d1f1a",
+            objectFit: "fill",
+          }}
+          tabIndex={0}
+        />
 
-          {/* Pause Overlay */}
-          {paused && screen === "playing" && (
-            <PauseOverlay onResume={handleResume} onQuit={handleQuit} />
-          )}
-        </div>
+        {/* Pause Overlay */}
+        {paused && screen === "playing" && (
+          <PauseOverlay onResume={handleResume} onQuit={handleQuit} />
+        )}
 
-        {/* Bottom info bar */}
-        <div className="bg-black/60 border-t border-green-900/30 px-4 py-1.5 flex items-center justify-between text-[10px] text-slate-500 rounded-b-lg">
+        {/* Bottom info bar overlay */}
+        <div className="absolute bottom-0 left-0 right-0 bg-black/60 border-t border-green-900/30 px-4 py-1 flex items-center justify-between text-[10px] text-slate-500">
           <span>🖱️ Click to direct riders · Click villain to attack</span>
           <span>⎵ Pause · R Restart</span>
           <span>🏆 Grow 100 ancient trees to win</span>
